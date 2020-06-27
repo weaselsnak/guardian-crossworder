@@ -1,0 +1,51 @@
+main, aside {
+    display: flex;
+    justify-content: space-around;
+}
+aside {
+    max-width: 50%;
+}
+article, p {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    margin: 0;
+}
+aside section {
+    padding: 0.5rem;
+}
+td {
+	width: 35px;
+	height: 35px;
+	background: black;
+	border: thin solid black;
+	position: relative;
+}
+input {
+    background: transparent;
+    width: 100%;
+    height: 100%;
+    display: inline-block;
+    outline: none;
+    border: 0;
+    text-transform: uppercase;
+    text-align: center;
+    font-size: large;
+}
+.white {
+	background: white;
+}
+.highlighted {
+	background: yellow;
+}
+.focused {
+    background: lightblue;
+}
+table {
+	border-collapse: collapse;
+}
+.clue-number {
+	position: absolute;
+	left: 1;
+	top: 1;
+	font-size: x-small;
+}
