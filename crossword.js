@@ -38,7 +38,7 @@ function click(cells, cell, offset) {
         if (cells[i] == cell && cells[i + offset]) {
             setTimeout(() => {
                 cells[i + offset].querySelector("input").click();
-                cells[i + offset].querySelector("input").focus();
+                cells[i + offset].querySelector("input").select();
             }, 0);
             break;
         }
@@ -78,12 +78,12 @@ document.querySelector('table').addEventListener('keypress', e => {
     const cell = e.target.closest('td.white')
     if (!cell) return;
     const highlightedCells = document.querySelectorAll("td.highlighted")
-    let word = ""
+    let word = []
     for (let i = 0; i < highlightedCells.length; i++) {
         if (cell == highlightedCells[i]) {
-            word += e.key
+            word.push(e.key)
         } else {
-            word += highlightedCells[i].querySelector("input").value
+            word.push(highlightedCells[i].querySelector("input").value)
         }
     }
     save(HIGHLIGHTED_CLUE, word)
