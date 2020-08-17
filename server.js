@@ -2,6 +2,7 @@ var express = require('express');
 var app = express();
 var http = require('http').createServer(app);
 var io = require('socket.io')(http);
+const port = process.env.PORT || 5000;
 
 app.use('/', express.static(__dirname));
 
@@ -12,11 +13,13 @@ io.on('connection', (socket) => {
     });
     socket.on('letter', (msg) => {
         socket.broadcast.emit('letter', msg);
-        console.log('letter: ' + msg);
+    });
+    socket.on('backspace', (msg) => {
+        socket.broadcast.emit('backspace', msg);
     });
 });
 
 
-http.listen(3000, () => {
-  console.log('listening on *:3000');
+http.listen(port, () => {
+  console.log(`listening on *:${port}`);
 });

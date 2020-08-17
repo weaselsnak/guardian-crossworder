@@ -48,7 +48,10 @@ const socket = io();
 socket.on('letter', msg => {
     const cell = document.querySelector(`td[data-row='${msg.row}'][data-col='${msg.col}']`);
     cell.querySelector("input").value = msg.key;
-    console.log(msg);
+})
+socket.on('backspace', msg => {
+    const cell = document.querySelector(`td[data-row='${msg.row}'][data-col='${msg.col}']`);
+    cell.querySelector("input").value = "";
 })
 
 document.querySelector('table').addEventListener('keydown', e => {
@@ -103,6 +106,7 @@ document.querySelector('table').addEventListener('keyup', e => {
     const cell = e.target.closest('td.white')
     if (!cell) return;
     const highlightedCells = document.querySelectorAll("td.highlighted")
+    socket.emit('backspace', {row: cell.getAttribute("data-row"), col: cell.getAttribute("data-col")})
     moveFocus(highlightedCells, cell, -1)
 }, false);
 
