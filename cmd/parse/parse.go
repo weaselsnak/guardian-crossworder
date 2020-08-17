@@ -2,11 +2,13 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
-	"os"
 	"strconv"
 	"strings"
+
+	"github.com/PuerkitoBio/goquery"
 )
 
 type Point struct {
@@ -37,12 +39,33 @@ type Cell struct {
 	Classes []string
 }
 
+func getCrossword(num int, out interface{}) error {
+	url := fmt.Sprintf("https://www.theguardian.com/crosswords/quick/%d", num)
+	doc, err := goquery.NewDocument(url)
+	if err != nil {
+		return fmt.Errorf("sorry I am unable to scrape the Guardian: %s", err)
+	}
+	c, exists := doc.Find(".js-crossword").Attr("data-crossword-data")
+	if !exists {
+		return fmt.Errorf("sorry I am unable to retrieve crossword data from the Guardian")
+	}
+	if err := json.Unmarshal([]byte(c), out); err != nil {
+		return err
+	}
+	return nil
+}
+
 func main() {
+	var crosswordNumber int
+	var crosswordType string
+	flag.IntVar(&crosswordNumber, "n", 1234, "please pass in a crossword number")
+	flag.StringVar(&crosswordType, "type", "quick", "quick, cryptic, quiptic etc")
+	flag.Parse()
+
 	var crossword Crossword
-	if err := json.NewDecoder(os.Stdin).Decode(&crossword); err != nil {
+	if err := getCrossword(crosswordNumber, &crossword); err != nil {
 		log.Fatal(err)
 	}
-
 	grid := make([][]*Cell, crossword.Dimensions.Rows)
 
 	for i := range grid {
@@ -78,13 +101,13 @@ func main() {
 	fmt.Println(`<main>`)
 	fmt.Println("<article>")
 	fmt.Println(`<table cellspacing="0">`)
-	for _, row := range grid {
+	for i, row := range grid {
 		fmt.Println("<tr>")
-		for _, cell := range row {
+		for j, cell := range row {
 			if len(cell.Classes) > 0 {
-				fmt.Printf(`<td class=%q><span class="clue-number">%s</span><input type="text" maxlength="1"></td>`, strings.Join(cell.Classes, " "), cell.Text)
+				fmt.Printf(`<td data-row=%d data-col=%d class=%q><span class="clue-number">%s</span><input type="text" maxlength="1"></td>`, i, j, strings.Join(cell.Classes, " "), cell.Text)
 			} else {
-				fmt.Printf(`<td class=%q><span class="clue-number">%s</span></td>`, strings.Join(cell.Classes, " "), cell.Text)
+				fmt.Printf(`<td data-row=%d data-col=%d class=%q><span class="clue-number">%s</span></td>`, i, j, strings.Join(cell.Classes, " "), cell.Text)
 
 			}
 		}
@@ -113,5 +136,6 @@ func main() {
 	fmt.Println(`</aside>`)
 	fmt.Println(`</main>`)
 
+	fmt.Println(`<script src="/socket.io/socket.io.js"></script>`)
 	fmt.Println(`<script src="crossword.js"></script>`)
 }

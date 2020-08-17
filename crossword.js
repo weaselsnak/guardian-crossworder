@@ -44,6 +44,12 @@ function click(cells, cell, offset) {
         }
     }
 }
+const socket = io();
+socket.on('letter', msg => {
+    const cell = document.querySelector(`td[data-row='${msg.row}'][data-col='${msg.col}']`);
+    cell.querySelector("input").value = msg.key;
+    console.log(msg);
+})
 
 document.querySelector('table').addEventListener('keydown', e => {
     const cell = e.target.closest('td.white')
@@ -79,15 +85,14 @@ document.querySelector('table').addEventListener('keypress', e => {
     if (!cell) return;
     const highlightedCells = document.querySelectorAll("td.highlighted")
     let word = []
+    cell.querySelector("input").value = e.key
+    socket.emit('letter', {key: e.key, row: cell.getAttribute("data-row"), col: cell.getAttribute("data-col")})
     for (let i = 0; i < highlightedCells.length; i++) {
-        if (cell == highlightedCells[i]) {
-            word.push(e.key)
-        } else {
-            word.push(highlightedCells[i].querySelector("input").value)
-        }
+        word.push(highlightedCells[i].querySelector("input").value)
     }
     save(HIGHLIGHTED_CLUE, word)
     moveFocus(highlightedCells, cell, 1)
+    e.preventDefault();
 }, false);
 
 document.querySelector('table').addEventListener('keyup', e => {
