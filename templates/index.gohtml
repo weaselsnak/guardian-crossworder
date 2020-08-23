@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<link rel="stylesheet" href="/static/style.css">
+<header>
+  <h2>{{ .Crossword.Name }}</h2>
+</header>
+<main>
+  <article>
+    <table cellspacing="0">
+      {{ range $i, $row := .Grid }}
+        <tr>
+          {{ range $j, $cell := $row }}
+            {{ if gt (len $cell.Classes) 0 }}
+              <td data-row="{{ $i }}" data-col="{{ $j }}" class="{{ join $cell.Classes }}">
+                <span class="clue-number">{{ $cell.Text }}</span>
+                <input type="text" maxlength="1">
+              </td>
+            {{ else }}
+              <td data-row="{{ $i }}" data-col="{{ $j }}" class="{{ join $cell.Classes }}">
+                <span class="clue-number">{{ $cell.Text }}</span>
+              </td>
+            {{ end }}
+          {{ end }}
+        </tr>
+      {{ end }}
+    </table>
+  </article>
+  <aside>
+    <section><h2>Across</h2>
+      {{ range .Crossword.Entries }}
+        {{ if eq .Direction "across" }}
+          <p class="clue-{{ .ID }}">{{ .Number }}. {{ .Clue }}</p>
+        {{ end }}
+      {{ end }}
+    </section>
+    <section><h2>Down</h2>
+      {{ range .Crossword.Entries }}
+        {{ if eq .Direction "down" }}
+          <p class="clue-{{ .ID }}">{{ .Number }}. {{ .Clue }}</p>
+        {{ end }}
+      {{ end }}
+    </section>
+  </aside>
+</main>
+<script src="/static/crossword.js"></script>

@@ -44,15 +44,27 @@ function click(cells, cell, offset) {
         }
     }
 }
-const socket = io();
-socket.on('letter', msg => {
+
+var socket = new WebSocket(`wss://${location.host}/ws`);
+socket.onopen = function() {
+    console.log('socket open')
+};
+socket.onmessage = function (e) {
+    console.log(e.data)
+    const msg = JSON.parse(e.data);
     const cell = document.querySelector(`td[data-row='${msg.row}'][data-col='${msg.col}']`);
-    cell.querySelector("input").value = msg.key;
-})
-socket.on('backspace', msg => {
-    const cell = document.querySelector(`td[data-row='${msg.row}'][data-col='${msg.col}']`);
-    cell.querySelector("input").value = "";
-})
+    if (msg.event == 'letter') {
+        cell.querySelector("input").value = msg.key;
+        return;
+    }
+    if (msg.event == 'backspace') {
+        cell.querySelector("input").value = "";
+        return;
+    }
+}
+socket.onclose = function () {
+    console.log('socket closed')
+};
 
 document.querySelector('table').addEventListener('keydown', e => {
     const cell = e.target.closest('td.white')
@@ -89,7 +101,7 @@ document.querySelector('table').addEventListener('keypress', e => {
     const highlightedCells = document.querySelectorAll("td.highlighted")
     let word = []
     cell.querySelector("input").value = e.key
-    socket.emit('letter', {key: e.key, row: cell.getAttribute("data-row"), col: cell.getAttribute("data-col")})
+    socket.send(JSON.stringify({event: 'letter', key: e.key, row: cell.getAttribute("data-row"), col: cell.getAttribute("data-col")})) 
     for (let i = 0; i < highlightedCells.length; i++) {
         word.push(highlightedCells[i].querySelector("input").value)
     }
@@ -106,7 +118,7 @@ document.querySelector('table').addEventListener('keyup', e => {
     const cell = e.target.closest('td.white')
     if (!cell) return;
     const highlightedCells = document.querySelectorAll("td.highlighted")
-    socket.emit('backspace', {row: cell.getAttribute("data-row"), col: cell.getAttribute("data-col")})
+    socket.send(JSON.stringify({event: 'backspace', row: cell.getAttribute("data-row"), col: cell.getAttribute("data-col")})) 
     moveFocus(highlightedCells, cell, -1)
 }, false);
 
