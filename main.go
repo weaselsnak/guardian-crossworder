@@ -74,7 +74,7 @@ func generateCrossword(w http.ResponseWriter, r *http.Request) {
 	*/
 
 	crosswordType := "quick"
-	crosswordNumber := 15692
+	crosswordNumber := 15699
 	var crossword Crossword
 	if err := getCrossword(crosswordType, crosswordNumber, &crossword); err != nil {
 		log.Fatal(err)

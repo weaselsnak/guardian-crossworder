@@ -45,9 +45,17 @@ function click(cells, cell, offset) {
     }
 }
 
-var socket = new WebSocket(`wss://${location.host}/ws`);
+let socket;
+if (location.protocol == 'http:') {
+    socket = new WebSocket(`ws://${location.host}/ws`);
+} else {
+    socket = new WebSocket(`wss://${location.host}/ws`);
+}
 socket.onopen = function() {
     console.log('socket open')
+};
+socket.onclose = function(e) {
+    connect();
 };
 socket.onmessage = function (e) {
     console.log(e.data)
