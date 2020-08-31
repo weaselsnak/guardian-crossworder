@@ -1,4 +1,4 @@
-module main.go
+module supremo
 
 go 1.15
 

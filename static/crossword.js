@@ -54,9 +54,6 @@ if (location.protocol == 'http:') {
 socket.onopen = function() {
     console.log('socket open')
 };
-socket.onclose = function(e) {
-    connect();
-};
 socket.onmessage = function (e) {
     console.log(e.data)
     const msg = JSON.parse(e.data);

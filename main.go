@@ -7,9 +7,11 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/gorilla/websocket"
@@ -65,19 +67,12 @@ func getCrossword(crosswordType string, num int, out interface{}) error {
 }
 
 func generateCrossword(w http.ResponseWriter, r *http.Request) {
-	/*
-		var crosswordNumber int
-		var crosswordType string
-		flag.IntVar(&crosswordNumber, "n", 1234, "please pass in a crossword number")
-		flag.StringVar(&crosswordType, "type", "quick", "quick, cryptic, quiptic etc")
-		flag.Parse()
-	*/
-
 	crosswordType := "quick"
-	crosswordNumber := 15699
+	crosswordNumber, _ := strconv.Atoi(path.Base(r.URL.Path))
 	var crossword Crossword
 	if err := getCrossword(crosswordType, crosswordNumber, &crossword); err != nil {
-		log.Fatal(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 	grid := make([][]*Cell, crossword.Dimensions.Rows)
 
@@ -168,6 +163,18 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func pingClients() {
+	for range time.Tick(25 * time.Second) {
+		mu.Lock()
+		for conn := range clients {
+			if err := conn.WriteControl(websocket.PingMessage, nil, time.Now().Add(10*time.Second)); err != nil {
+				deleteConnection(conn)
+			}
+		}
+		mu.Unlock()
+	}
+}
+
 func handleMessages() {
 	for {
 		msg := <-broadcast
@@ -177,7 +184,6 @@ func handleMessages() {
 				log.Printf("error: %v", err)
 				conn.Close()
 				deleteConnection(conn)
-				mu.Unlock()
 			}
 		}
 		mu.Unlock()
@@ -187,8 +193,9 @@ func handleMessages() {
 func main() {
 	http.HandleFunc("/ws", wsHandler)
 	http.Handle("/static/", http.FileServer(http.Dir(".")))
-	http.HandleFunc("/", generateCrossword)
+	http.HandleFunc("/crosswords/", generateCrossword)
 	go handleMessages()
+	go pingClients()
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "5000"
