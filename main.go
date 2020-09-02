@@ -52,6 +52,7 @@ type All struct {
 
 func getCrossword(crosswordType string, num int, out interface{}) error {
 	url := fmt.Sprintf("https://www.theguardian.com/crosswords/%s/%d", crosswordType, num)
+	log.Printf("getting crossword %s", url)
 	doc, err := goquery.NewDocument(url)
 	if err != nil {
 		return fmt.Errorf("sorry I am unable to scrape the Guardian: %s", err)
@@ -66,9 +67,9 @@ func getCrossword(crosswordType string, num int, out interface{}) error {
 	return nil
 }
 
-func generateCrossword(w http.ResponseWriter, r *http.Request) {
-	crosswordType := "quick"
-	crosswordNumber, _ := strconv.Atoi(path.Base(r.URL.Path))
+var crosswordTypes = []string{"quick", "cryptic", "prize", "weekend", "quiptic", "genius", "speedy", "everyman"}
+
+func generateCrossword(w http.ResponseWriter, r *http.Request, crosswordType string, crosswordNumber int) {
 	var crossword Crossword
 	if err := getCrossword(crosswordType, crosswordNumber, &crossword); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -190,10 +191,33 @@ func handleMessages() {
 	}
 }
 
+func isValid(crosswordType string) bool {
+	for _, c := range crosswordTypes {
+		if strings.EqualFold(c, crosswordType) {
+			return true
+		}
+	}
+	return false
+}
+
+func router(w http.ResponseWriter, r *http.Request) {
+	crosswordType := strings.TrimPrefix(path.Dir(r.URL.Path), "/")
+	if !isValid(crosswordType) {
+		http.NotFound(w, r)
+		return
+	}
+	crosswordNumber, err := strconv.Atoi(path.Base(r.URL.Path))
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	generateCrossword(w, r, crosswordType, crosswordNumber)
+}
+
 func main() {
 	http.HandleFunc("/ws", wsHandler)
 	http.Handle("/static/", http.FileServer(http.Dir(".")))
-	http.HandleFunc("/crosswords/", generateCrossword)
+	http.HandleFunc("/", router)
 	go handleMessages()
 	go pingClients()
 	port := os.Getenv("PORT")
