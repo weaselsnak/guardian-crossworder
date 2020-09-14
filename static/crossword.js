@@ -1,6 +1,7 @@
 let HIGHLIGHTED_CLUE;
 let FOCUSED_CELL;
 let LAST_CLICKED_CELL;
+const CROSSWORD_ID = document.getElementById("crossword-id").value; // crosswords/quick/1234
 
 // e.g. highlightClue("15-across")
 function highlightClue(clue) {
@@ -55,7 +56,6 @@ socket.onopen = function() {
     console.log('socket open')
 };
 socket.onmessage = function (e) {
-    console.log(e.data)
     const msg = JSON.parse(e.data);
     const cell = document.querySelector(`td[data-row='${msg.row}'][data-col='${msg.col}']`);
     if (msg.event == 'letter') {
@@ -168,20 +168,20 @@ function fill(clue, word) {
 
 function loadAll() {
     const progress = JSON.parse(localStorage.crosswordProgress || "{}");
-    const clues = Object.keys(progress);
+    if (progress[CROSSWORD_ID] == null) {
+        return
+    }
+    const clues = Object.keys(progress[CROSSWORD_ID]);
     for (const clue of clues) {
-        fill(clue, progress[clue])
+        fill(clue, progress[CROSSWORD_ID][clue])
     }
 }
 
 function save(clue, attemptedWord) {
     let progress = JSON.parse(localStorage.crosswordProgress || "{}");
-    progress[clue] = attemptedWord;
+    progress[CROSSWORD_ID] ||= {};
+    progress[CROSSWORD_ID][clue] = attemptedWord;
     localStorage.crosswordProgress = JSON.stringify(progress);
 }
 
-function load(clue) {
-    let progress = JSON.parse(localStorage.crosswordProgress || "{}");
-    return progress[clue];
-}
 window.onload = loadAll

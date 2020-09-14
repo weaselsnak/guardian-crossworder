@@ -32,6 +32,7 @@ type Clue struct {
 }
 
 type Crossword struct {
+	Id         string // is of the form crosswords/quick/15655
 	Name       string
 	Dimensions struct {
 		Rows int
