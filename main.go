@@ -27,7 +27,7 @@ type Clue struct {
 	Number    int
 	Length    int
 	Direction string
-	Clue      string
+	Clue      template.HTML
 	Position  Point
 }
 
