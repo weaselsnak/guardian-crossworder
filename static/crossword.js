@@ -46,15 +46,19 @@ function click(cells, cell, offset) {
     }
 }
 
-let socket;
-if (location.protocol == 'http:') {
-    socket = new WebSocket(`ws://${location.host}/ws`);
-} else {
-    socket = new WebSocket(`wss://${location.host}/ws`);
+function newSocket() {
+    if (location.protocol == 'http:') {
+        socket = new WebSocket(`ws://${location.host}/ws`);
+    } else {
+        socket = new WebSocket(`wss://${location.host}/ws`);
+    }
+    socket.onopen = function() {
+        console.log('socket open')
+    };
 }
-socket.onopen = function() {
-    console.log('socket open')
-};
+
+let socket;
+newSocket();
 socket.onmessage = function (e) {
     const msg = JSON.parse(e.data);
     const cell = document.querySelector(`td[data-row='${msg.row}'][data-col='${msg.col}']`);
@@ -101,6 +105,9 @@ document.querySelector('table').addEventListener('keydown', e => {
 
 document.querySelector('table').addEventListener('keypress', e => {
     if (e.key < 'a' || e.key > 'z') return e.preventDefault();
+    if (socket.readyState === WebSocket.CLOSED) {
+        newSocket();
+    }
     const cell = e.target.closest('td.white')
     if (!cell) return;
     const highlightedCells = document.querySelectorAll("td.highlighted")
@@ -119,6 +126,9 @@ document.querySelector('table').addEventListener('keyup', e => {
     const BACKSPACE_KEY = 8
     if (e.keyCode != BACKSPACE_KEY) {
         return
+    }
+    if (socket.readyState === WebSocket.CLOSED) {
+        newSocket();
     }
     const cell = e.target.closest('td.white')
     if (!cell) return;
