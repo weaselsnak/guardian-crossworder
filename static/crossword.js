@@ -62,11 +62,14 @@ newSocket();
 socket.onmessage = function (e) {
     const msg = JSON.parse(e.data);
     const cell = document.querySelector(`td[data-row='${msg.row}'][data-col='${msg.col}']`);
+    const cells = document.querySelectorAll("td.white")
     if (msg.event == 'letter') {
         cell.querySelector("input").value = msg.key;
+        save(cells)
         return;
     }
     if (msg.event == 'backspace') {
+        save(cells)
         cell.querySelector("input").value = "";
         return;
     }
@@ -113,11 +116,12 @@ document.querySelector('table').addEventListener('keypress', e => {
     const highlightedCells = document.querySelectorAll("td.highlighted")
     let word = []
     cell.querySelector("input").value = e.key
+    const cells = document.querySelectorAll("td.white")
+    save(cells)
     socket.send(JSON.stringify({event: 'letter', key: e.key, row: cell.getAttribute("data-row"), col: cell.getAttribute("data-col")})) 
     for (let i = 0; i < highlightedCells.length; i++) {
         word.push(highlightedCells[i].querySelector("input").value)
     }
-    save(HIGHLIGHTED_CLUE, word)
     moveFocus(highlightedCells, cell, 1)
     e.preventDefault();
 }, false);
@@ -169,28 +173,31 @@ document.querySelector('table').addEventListener('click', e => {
     }
 }, false);
 
-function fill(clue, word) {
-    const cells = document.querySelectorAll("td." + clue)
-    for (let i = 0; i < word.length; i++) {
-        cells[i].querySelector("input").value = word[i]
-    }
+function fill(cellData) {
+    const cell = document.querySelector(`td[data-row='${cellData.row}'][data-col='${cellData.col}']`);
+    cell.querySelector("input").value = cellData.letter;
 }
 
 function loadAll() {
     const progress = JSON.parse(localStorage.crosswordProgress || "{}");
-    if (progress[CROSSWORD_ID] == null) {
+    if (!progress[CROSSWORD_ID]) {
         return
     }
-    const clues = Object.keys(progress[CROSSWORD_ID]);
-    for (const clue of clues) {
-        fill(clue, progress[CROSSWORD_ID][clue])
+    let crosswordData = progress[CROSSWORD_ID];
+    for (const pos of Object.keys(crosswordData)) {
+        fill(crosswordData[pos])
     }
 }
 
-function save(clue, attemptedWord) {
+function save(cells) {
     let progress = JSON.parse(localStorage.crosswordProgress || "{}");
     progress[CROSSWORD_ID] ||= {};
-    progress[CROSSWORD_ID][clue] = attemptedWord;
+    for (let i = 0; i < cells.length; i++) {
+        let row = cells[i].getAttribute("data-row");
+        let col = cells[i].getAttribute("data-col");
+        let letter = cells[i].querySelector("input").value;
+        progress[CROSSWORD_ID][row+col] = {letter: letter, row: row, col: col}
+    }
     localStorage.crosswordProgress = JSON.stringify(progress);
 }
 
