@@ -30,6 +30,7 @@ input {
     text-transform: uppercase;
     text-align: center;
     font-size: large;
+	box-sizing: border-box;
 }
 .white {
 	background: white;
