@@ -166,10 +166,13 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func pingClients() {
-	for range time.Tick(25 * time.Second) {
+	for range time.Tick(30 * time.Second) {
 		mu.Lock()
+		msg := []byte("")
 		for conn := range clients {
-			if err := conn.WriteControl(websocket.PingMessage, nil, time.Now().Add(10*time.Second)); err != nil {
+			if err := conn.WriteMessage(websocket.TextMessage, msg); err != nil {
+				log.Println(err)
+				conn.Close()
 				deleteConnection(conn)
 			}
 		}
@@ -202,7 +205,7 @@ func isValid(crosswordType string) bool {
 }
 
 func router(w http.ResponseWriter, r *http.Request) {
-	crosswordType := strings.TrimPrefix(path.Dir(r.URL.Path), "/")
+	crosswordType := strings.ToLower(strings.TrimPrefix(path.Dir(r.URL.Path), "/"))
 	if !isValid(crosswordType) {
 		http.NotFound(w, r)
 		return

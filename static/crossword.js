@@ -60,6 +60,10 @@ function newSocket() {
 let socket;
 newSocket();
 socket.onmessage = function (e) {
+    // receiving empty message to keep connection alive
+    if (e.data == '') {
+        return;
+    }
     const msg = JSON.parse(e.data);
     const cell = document.querySelector(`td[data-row='${msg.row}'][data-col='${msg.col}']`);
     const cells = document.querySelectorAll("td.white")
@@ -74,8 +78,12 @@ socket.onmessage = function (e) {
         return;
     }
 }
-socket.onclose = function () {
-    console.log('socket closed')
+socket.onclose = function (event) {
+    console.log("socket closed: ", event)
+};
+
+socket.onerror = function(event) {
+    console.error("socket error: ", event);
 };
 
 document.querySelector('table').addEventListener('keydown', e => {
