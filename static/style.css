@@ -38,6 +38,9 @@ input {
 .highlighted {
 	background: yellow;
 }
+.friends-highlighted {
+	background: bisque;
+}
 .focused {
     background: lightblue;
 }

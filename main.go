@@ -124,11 +124,13 @@ type message struct {
 	Key   string `json:"key"`
 	Row   string `json:"row"`
 	Col   string `json:"col"`
+	Clue  string `json:"clue"`
 }
 
 var broadcast = make(chan message)
 var mu = sync.Mutex{}
 var clients = make(map[*websocket.Conn]bool)
+var sender *websocket.Conn
 
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
@@ -156,6 +158,7 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 	for {
 		var msg message
 		err := conn.ReadJSON(&msg)
+		sender = conn
 		if err != nil {
 			log.Printf("error: %v", err)
 			deleteConnection(conn)
@@ -165,7 +168,8 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func pingClients() {
+// to keep connection alive
+func sendEmptyMessage() {
 	for range time.Tick(30 * time.Second) {
 		mu.Lock()
 		msg := []byte("")
@@ -185,6 +189,10 @@ func handleMessages() {
 		msg := <-broadcast
 		mu.Lock()
 		for conn := range clients {
+			// we want to skip writing messages to the sender
+			if conn == sender {
+				continue
+			}
 			if err := conn.WriteJSON(msg); err != nil {
 				log.Printf("error: %v", err)
 				conn.Close()
@@ -223,7 +231,7 @@ func main() {
 	http.Handle("/static/", http.FileServer(http.Dir(".")))
 	http.HandleFunc("/", router)
 	go handleMessages()
-	go pingClients()
+	go sendEmptyMessage()
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "5000"

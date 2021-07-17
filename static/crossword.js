@@ -1,9 +1,10 @@
 let HIGHLIGHTED_CLUE;
+let FRIENDS_HIGHLIGHTED_CLUE;
 let FOCUSED_CELL;
 let LAST_CLICKED_CELL;
 const CROSSWORD_ID = document.getElementById("crossword-id").value; // crosswords/quick/1234
 
-// e.g. highlightClue("15-across")
+// e.g. highlightClue("clue-15-across")
 function highlightClue(clue) {
     if (HIGHLIGHTED_CLUE) {
         const cells = document.querySelectorAll("." + HIGHLIGHTED_CLUE)
@@ -14,9 +15,20 @@ function highlightClue(clue) {
     HIGHLIGHTED_CLUE = clue;
 }
 
+// This is the Francesca feature
+function highlightFriendsClue(clue) {
+    if (FRIENDS_HIGHLIGHTED_CLUE) {
+        const cells = document.querySelectorAll("." + FRIENDS_HIGHLIGHTED_CLUE)
+        cells.forEach(c => c.classList.remove("friends-highlighted"))
+    }
+    const cells = document.querySelectorAll("." + clue)
+    cells.forEach(c => c.classList.add("friends-highlighted"))
+    FRIENDS_HIGHLIGHTED_CLUE = clue;
+}
 
 document.querySelector('aside').addEventListener('click', e => {
     if (e.target.tagName != "P" || e.target.classList.contains("highlighted")) return;
+    socket.send(JSON.stringify({clue: e.target.className}));
     highlightClue(e.target.className)
     const firstInput = document.querySelector("td.highlighted input")
     firstInput.select()
@@ -77,6 +89,8 @@ socket.onmessage = function (e) {
         cell.querySelector("input").value = "";
         return;
     }
+    // this is to highlight clicked on clues sent from the client
+    highlightFriendsClue(msg.clue);
 }
 socket.onclose = function (event) {
     console.log("socket closed: ", event)
@@ -126,7 +140,7 @@ document.querySelector('table').addEventListener('keypress', e => {
     cell.querySelector("input").value = e.key
     const cells = document.querySelectorAll("td.white")
     save(cells)
-    socket.send(JSON.stringify({event: 'letter', key: e.key, row: cell.getAttribute("data-row"), col: cell.getAttribute("data-col")})) 
+    socket.send(JSON.stringify({event: 'letter', key: e.key, row: cell.getAttribute("data-row"), col: cell.getAttribute("data-col"), clue: HIGHLIGHTED_CLUE}))
     for (let i = 0; i < highlightedCells.length; i++) {
         word.push(highlightedCells[i].querySelector("input").value)
     }
@@ -177,6 +191,7 @@ document.querySelector('table').addEventListener('click', e => {
             continue
         }
         highlightClue(clue)
+        socket.send(JSON.stringify({clue: clue}));
         break
     }
 }, false);
