@@ -53,3 +53,7 @@ table {
 	top: 1;
 	font-size: x-small;
 }
+.info {
+  display: flex;
+  justify-content: end;
+}

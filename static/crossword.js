@@ -77,6 +77,10 @@ socket.onmessage = function (e) {
         return;
     }
     const msg = JSON.parse(e.data);
+    if (msg.connected != 0) {
+        document.getElementById("connected").innerHTML = msg.connected
+        return
+    }
     const cell = document.querySelector(`td[data-row='${msg.row}'][data-col='${msg.col}']`);
     const cells = document.querySelectorAll("td.white")
     if (msg.event == 'letter') {
@@ -92,6 +96,12 @@ socket.onmessage = function (e) {
     // this is to highlight clicked on clues sent from the client
     highlightFriendsClue(msg.clue);
 }
+
+// to stop the server from idling
+setInterval(function(){
+    socket.send("")
+}, 30000);
+
 socket.onclose = function (event) {
     console.log("socket closed: ", event)
 };

@@ -120,11 +120,12 @@ func generateCrossword(w http.ResponseWriter, r *http.Request, crosswordType str
 }
 
 type message struct {
-	Event string `json:"event"`
-	Key   string `json:"key"`
-	Row   string `json:"row"`
-	Col   string `json:"col"`
-	Clue  string `json:"clue"`
+	Event     string `json:"event"`
+	Key       string `json:"key"`
+	Row       string `json:"row"`
+	Col       string `json:"col"`
+	Clue      string `json:"clue"`
+	Connected int    `json:"connected"`
 }
 
 var broadcast = make(chan message)
@@ -148,6 +149,15 @@ func addConnection(conn *websocket.Conn) {
 	clients[conn] = true
 	mu.Unlock()
 }
+
+func closeGracefully(conn *websocket.Conn) {
+	usersConnected--
+	conn.Close()
+	deleteConnection(conn)
+}
+
+var usersConnected int
+
 func wsHandler(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -155,13 +165,27 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 	addConnection(conn)
+	usersConnected++
+	mu.Lock()
+	for conn := range clients {
+		if err := conn.WriteJSON(message{Connected: usersConnected}); err != nil {
+			log.Println(err)
+			closeGracefully(conn)
+		}
+	}
+	mu.Unlock()
 	for {
+		// receiving empty messaging from client to stop the server idling
+		_, b, _ := conn.ReadMessage()
+		if len(b) == 0 {
+			continue
+		}
 		var msg message
 		err := conn.ReadJSON(&msg)
 		sender = conn
 		if err != nil {
-			log.Printf("error: %v", err)
-			deleteConnection(conn)
+			log.Println(err)
+			closeGracefully(conn)
 			break
 		}
 		broadcast <- msg
@@ -176,8 +200,7 @@ func sendEmptyMessage() {
 		for conn := range clients {
 			if err := conn.WriteMessage(websocket.TextMessage, msg); err != nil {
 				log.Println(err)
-				conn.Close()
-				deleteConnection(conn)
+				closeGracefully(conn)
 			}
 		}
 		mu.Unlock()
@@ -194,9 +217,8 @@ func handleMessages() {
 				continue
 			}
 			if err := conn.WriteJSON(msg); err != nil {
-				log.Printf("error: %v", err)
-				conn.Close()
-				deleteConnection(conn)
+				log.Println(err)
+				closeGracefully(conn)
 			}
 		}
 		mu.Unlock()
