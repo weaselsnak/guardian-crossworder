@@ -32,6 +32,12 @@ input {
     font-size: large;
 	box-sizing: border-box;
 }
+.sep-across {
+  border-right: medium solid black;
+}
+.sep-down {
+  border-bottom: medium solid black;
+}
 .white {
 	background: white;
 }

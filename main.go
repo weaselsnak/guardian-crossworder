@@ -23,12 +23,13 @@ type Point struct {
 }
 
 type Clue struct {
-	ID        string
-	Number    int
-	Length    int
-	Direction string
-	Clue      template.HTML
-	Position  Point
+	ID                 string
+	Number             int
+	Length             int
+	Direction          string
+	Clue               template.HTML
+	Position           Point
+	SeparatorLocations map[string][]int
 }
 
 type Crossword struct {
@@ -56,14 +57,25 @@ func getCrossword(crosswordType string, num int, out interface{}) error {
 	log.Printf("getting crossword %s", url)
 	doc, err := goquery.NewDocument(url)
 	if err != nil {
-		return fmt.Errorf("sorry I am unable to scrape the Guardian: %s", err)
+		return fmt.Errorf("sorry I am unable to scrape the Guardian crossword: %s", err)
 	}
 	c, exists := doc.Find(".js-crossword").Attr("data-crossword-data")
 	if !exists {
-		return fmt.Errorf("sorry I am unable to retrieve crossword data from the Guardian")
+		return fmt.Errorf("sorry I am unable to retrieve the Guardian crossword")
 	}
 	if err := json.Unmarshal([]byte(c), out); err != nil {
 		return err
+	}
+	return nil
+}
+func separatorPositions(s map[string][]int) []int {
+	for separator, numbers := range s {
+		switch separator {
+		case ",":
+			return numbers
+		case "-":
+			return numbers
+		}
 	}
 	return nil
 }
@@ -97,8 +109,24 @@ func generateCrossword(w http.ResponseWriter, r *http.Request, crosswordType str
 			}
 			cell.Classes = append(cell.Classes, "clue-"+entry.ID)
 			if entry.Direction == "across" {
+				if len(entry.SeparatorLocations) != 0 {
+					positions := separatorPositions(entry.SeparatorLocations)
+					for _, p := range positions {
+						if p == i+1 {
+							cell.Classes = append(cell.Classes, "sep-across")
+						}
+					}
+				}
 				pos.X++
 			} else {
+				if len(entry.SeparatorLocations) != 0 {
+					positions := separatorPositions(entry.SeparatorLocations)
+					for _, p := range positions {
+						if p == i+1 {
+							cell.Classes = append(cell.Classes, "sep-down")
+						}
+					}
+				}
 				pos.Y++
 			}
 		}
