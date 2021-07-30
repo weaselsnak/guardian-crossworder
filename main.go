@@ -184,6 +184,7 @@ func closeGracefully(conn *websocket.Conn, err error) {
 	atomic.AddInt64(&usersConnected, -1)
 	conn.Close()
 	deleteConnection(conn)
+	broadcast <- message{Connected: atomic.LoadInt64(&usersConnected)}
 }
 
 var usersConnected int64
@@ -228,8 +229,7 @@ func sendEmptyMessage() {
 }
 
 func handleMessages() {
-	for {
-		msg := <-broadcast
+	for msg := range broadcast {
 		conns := getConnections()
 		for _, conn := range conns {
 			// we want to skip writing messages to the sender
