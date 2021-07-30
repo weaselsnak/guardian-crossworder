@@ -73,7 +73,7 @@ let socket;
 newSocket();
 socket.onmessage = function (e) {
     // receiving empty message to keep connection alive
-    if (e.data == '') {
+    if (e.data == '{}') {
         return;
     }
     const msg = JSON.parse(e.data);
@@ -99,7 +99,7 @@ socket.onmessage = function (e) {
 
 // to stop the server from idling
 setInterval(function(){
-    socket.send("")
+    socket.send(JSON.stringify({}))
 }, 30000);
 
 socket.onclose = function (event) {

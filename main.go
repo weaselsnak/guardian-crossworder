@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
@@ -148,18 +149,18 @@ func generateCrossword(w http.ResponseWriter, r *http.Request, crosswordType str
 }
 
 type message struct {
-	Event     string `json:"event"`
-	Key       string `json:"key"`
-	Row       string `json:"row"`
-	Col       string `json:"col"`
-	Clue      string `json:"clue"`
-	Connected int    `json:"connected"`
+	Event     string          `json:"event"`
+	Key       string          `json:"key"`
+	Row       string          `json:"row"`
+	Col       string          `json:"col"`
+	Clue      string          `json:"clue"`
+	Connected int64           `json:"connected"`
+	Sender    *websocket.Conn `json:"sender"`
 }
 
 var broadcast = make(chan message)
 var mu = sync.Mutex{}
 var clients = make(map[*websocket.Conn]bool)
-var sender *websocket.Conn
 
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
@@ -178,13 +179,23 @@ func addConnection(conn *websocket.Conn) {
 	mu.Unlock()
 }
 
-func closeGracefully(conn *websocket.Conn) {
-	usersConnected--
+func closeGracefully(conn *websocket.Conn, err error) {
+	log.Println(err)
+	atomic.AddInt64(&usersConnected, -1)
 	conn.Close()
 	deleteConnection(conn)
 }
 
-var usersConnected int
+var usersConnected int64
+
+func getConnections() (conns []*websocket.Conn) {
+	mu.Lock()
+	for conn := range clients {
+		conns = append(conns, conn)
+	}
+	mu.Unlock()
+	return conns
+}
 
 func wsHandler(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
@@ -193,29 +204,18 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 	addConnection(conn)
-	usersConnected++
-	mu.Lock()
-	for conn := range clients {
-		if err := conn.WriteJSON(message{Connected: usersConnected}); err != nil {
-			log.Println(err)
-			closeGracefully(conn)
-		}
-	}
-	mu.Unlock()
+	atomic.AddInt64(&usersConnected, 1)
+	broadcast <- message{Connected: atomic.LoadInt64(&usersConnected)}
 	for {
-		// receiving empty messaging from client to stop the server idling
-		_, b, _ := conn.ReadMessage()
-		if len(b) == 0 {
-			continue
-		}
 		var msg message
-		err := conn.ReadJSON(&msg)
-		sender = conn
-		if err != nil {
-			log.Println(err)
-			closeGracefully(conn)
+		if err := conn.ReadJSON(&msg); err != nil {
+			closeGracefully(conn, err)
 			break
 		}
+		if msg == (message{}) {
+			continue
+		}
+		msg.Sender = conn
 		broadcast <- msg
 	}
 }
@@ -223,33 +223,23 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 // to keep connection alive
 func sendEmptyMessage() {
 	for range time.Tick(30 * time.Second) {
-		mu.Lock()
-		msg := []byte("")
-		for conn := range clients {
-			if err := conn.WriteMessage(websocket.TextMessage, msg); err != nil {
-				log.Println(err)
-				closeGracefully(conn)
-			}
-		}
-		mu.Unlock()
+		broadcast <- message{}
 	}
 }
 
 func handleMessages() {
 	for {
 		msg := <-broadcast
-		mu.Lock()
-		for conn := range clients {
+		conns := getConnections()
+		for _, conn := range conns {
 			// we want to skip writing messages to the sender
-			if conn == sender {
+			if msg.Sender == conn {
 				continue
 			}
 			if err := conn.WriteJSON(msg); err != nil {
-				log.Println(err)
-				closeGracefully(conn)
+				closeGracefully(conn, err)
 			}
 		}
-		mu.Unlock()
 	}
 }
 

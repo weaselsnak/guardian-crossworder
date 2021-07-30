@@ -63,3 +63,6 @@ table {
   display: flex;
   justify-content: end;
 }
+#connected {
+    margin-left: 5px;
+}
