@@ -84,6 +84,8 @@ socket.onmessage = function (e) {
     const cell = document.querySelector(`td[data-row='${msg.row}'][data-col='${msg.col}']`);
     const cells = document.querySelectorAll("td.white")
     if (msg.event == 'letter') {
+    // this is to highlight clicked on clues sent from the client
+        highlightFriendsClue(msg.clue);
         cell.querySelector("input").value = msg.key;
         save(cells)
         return;
@@ -93,8 +95,9 @@ socket.onmessage = function (e) {
         cell.querySelector("input").value = "";
         return;
     }
-    // this is to highlight clicked on clues sent from the client
-    highlightFriendsClue(msg.clue);
+    if (msg.event == 'click') {
+        highlightFriendsClue(msg.clue);
+    }
 }
 
 // to stop the server from idling
@@ -201,7 +204,7 @@ document.querySelector('table').addEventListener('click', e => {
             continue
         }
         highlightClue(clue)
-        socket.send(JSON.stringify({clue: clue}));
+        socket.send(JSON.stringify({event: "click", clue: clue}));
         break
     }
 }, false);
