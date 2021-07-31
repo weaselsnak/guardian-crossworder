@@ -28,7 +28,8 @@ function highlightFriendsClue(clue) {
 
 document.querySelector('aside').addEventListener('click', e => {
     if (e.target.tagName != "P" || e.target.classList.contains("highlighted")) return;
-    socket.send(JSON.stringify({clue: e.target.className}));
+    // sending clue for friend's highlight
+    socket.send(JSON.stringify({event: "click", clue: e.target.className}));
     highlightClue(e.target.className)
     const firstInput = document.querySelector("td.highlighted input")
     firstInput.select()
