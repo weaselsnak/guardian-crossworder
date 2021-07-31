@@ -221,23 +221,26 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// to keep connection alive
-func sendEmptyMessage() {
-	for range time.Tick(30 * time.Second) {
-		broadcast <- message{}
-	}
-}
-
 func handleMessages() {
-	for msg := range broadcast {
-		conns := getConnections()
-		for _, conn := range conns {
-			// we want to skip writing messages to the sender
-			if msg.Sender == conn {
-				continue
+	for {
+		select {
+		case msg := <-broadcast:
+			conns := getConnections()
+			for _, conn := range conns {
+				// we want to skip writing messages to the sender
+				if msg.Sender == conn {
+					continue
+				}
+				if err := conn.WriteJSON(msg); err != nil {
+					closeGracefully(conn, err)
+				}
 			}
-			if err := conn.WriteJSON(msg); err != nil {
-				closeGracefully(conn, err)
+		case <-time.After(30 * time.Second):
+			conns := getConnections()
+			for _, conn := range conns {
+				if err := conn.WriteJSON(message{}); err != nil {
+					closeGracefully(conn, err)
+				}
 			}
 		}
 	}
@@ -271,7 +274,6 @@ func main() {
 	http.Handle("/static/", http.FileServer(http.Dir(".")))
 	http.HandleFunc("/", router)
 	go handleMessages()
-	go sendEmptyMessage()
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "5000"
