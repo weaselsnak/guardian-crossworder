@@ -31,18 +31,22 @@
   </article>
   <aside>
     <section><h2>Across</h2>
-      {{ range .Crossword.Entries }}
-        {{ if eq .Direction "across" }}
-          <p class="clue-{{ .ID }}">{{ .Number }}. {{ .Clue }}</p>
+      <ol>
+        {{ range .Crossword.Entries }}
+          {{ if eq .Direction "across" }}
+            <li class="clue-{{ .ID }}" value={{ .Number }}> {{ .Clue }}</li>
+          {{ end }}
         {{ end }}
-      {{ end }}
+      </ol>
     </section>
     <section><h2>Down</h2>
-      {{ range .Crossword.Entries }}
-        {{ if eq .Direction "down" }}
-          <p class="clue-{{ .ID }}">{{ .Number }}. {{ .Clue }}</p>
+      <ol>
+        {{ range .Crossword.Entries }}
+          {{ if eq .Direction "down" }}
+            <li class="clue-{{ .ID }}" value={{ .Number }}> {{ .Clue }}</li>
+          {{ end }}
         {{ end }}
-      {{ end }}
+      </ol>
     </section>
   </aside>
 </main>

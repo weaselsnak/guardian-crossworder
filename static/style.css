@@ -5,10 +5,13 @@ main, aside {
 aside {
     max-width: 50%;
 }
-article, p {
+article, li {
     padding-top: 0.5rem;
     padding-bottom: 0.5rem;
     margin: 0;
+}
+ol {
+    padding-left: 1em
 }
 aside section {
     padding: 0.5rem;
@@ -30,7 +33,10 @@ input {
     text-transform: uppercase;
     text-align: center;
     font-size: large;
-	box-sizing: border-box;
+	  box-sizing: border-box;
+}
+h2 {
+  margin-top: 0;
 }
 .sep-across {
   border-right: medium solid black;
