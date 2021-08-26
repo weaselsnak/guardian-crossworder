@@ -27,7 +27,7 @@ function highlightFriendsClue(clue) {
 }
 
 document.querySelector('aside').addEventListener('click', e => {
-    if (e.target.tagName != "P" || e.target.classList.contains("highlighted")) return;
+    if (e.target.tagName != "LI" || e.target.classList.contains("highlighted")) return;
     // sending clue for friend's highlight
     socket.send(JSON.stringify({event: "click", clue: e.target.className}));
     highlightClue(e.target.className)
