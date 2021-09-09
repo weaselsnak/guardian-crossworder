@@ -27,10 +27,11 @@ function highlightFriendsClue(clue) {
 }
 
 document.querySelector('aside').addEventListener('click', e => {
-    if (e.target.tagName != "LI" || e.target.classList.contains("highlighted")) return;
+    const div = e.target.parentNode;
+    if (e.target.tagName != "LI" || div.classList.contains("highlighted")) return;
     // sending clue for friend's highlight
-    socket.send(JSON.stringify({event: "click", clue: e.target.className}));
-    highlightClue(e.target.className)
+    socket.send(JSON.stringify({event: "click", clue: div.className}));
+    highlightClue(div.className)
     const firstInput = document.querySelector("td.highlighted input")
     firstInput.select()
 }, false);
