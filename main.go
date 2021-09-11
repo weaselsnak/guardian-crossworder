@@ -149,6 +149,9 @@ func generateCrossword(w http.ResponseWriter, r *http.Request, crosswordType str
 		"join": func(s []string) string {
 			return strings.Join(s, " ")
 		},
+		"staticpath": func(filename string) string {
+			return fmt.Sprintf("/static/%d/%s", versionNo, filename)
+		},
 	}).ParseFiles("templates/index.gohtml")
 	if err != nil {
 		log.Fatal(err)
@@ -279,9 +282,12 @@ func router(w http.ResponseWriter, r *http.Request) {
 	generateCrossword(w, r, crosswordType, crosswordNumber)
 }
 
+var versionNo = time.Now().Unix()
+
 func main() {
 	http.HandleFunc("/ws", wsHandler)
-	http.Handle("/static/", http.FileServer(http.Dir(".")))
+	prefix := fmt.Sprintf("/static/%d/", versionNo)
+	http.Handle(prefix, http.StripPrefix(prefix, http.FileServer(http.Dir("static"))))
 	http.HandleFunc("/", router)
 	go handleMessages()
 	port := os.Getenv("PORT")
