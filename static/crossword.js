@@ -87,7 +87,7 @@ socket.onmessage = function (e) {
     const cells = document.querySelectorAll("td.white")
     if (msg.event == 'letter') {
     // this is to highlight clicked on clues sent from the client
-        highlightFriendsClue(msg.clue);
+        highlightFriendsClue(msg.clues);
         cell.querySelector("input").value = msg.key;
         save(cells)
         return;
@@ -98,7 +98,7 @@ socket.onmessage = function (e) {
         return;
     }
     if (msg.event == 'click') {
-        highlightFriendsClue(msg.clue);
+        highlightFriendsClue(msg.clues);
     }
 }
 
@@ -155,7 +155,7 @@ document.querySelector('table').addEventListener('keypress', e => {
     cell.querySelector("input").value = e.key
     const cells = document.querySelectorAll("td.white")
     save(cells)
-    socket.send(JSON.stringify({event: 'letter', key: e.key, row: cell.getAttribute("data-row"), col: cell.getAttribute("data-col"), clue: HIGHLIGHTED_CLUE}))
+    socket.send(JSON.stringify({event: 'letter', key: e.key, row: cell.getAttribute("data-row"), col: cell.getAttribute("data-col"), clues: HIGHLIGHTED_CLUE}))
     for (let i = 0; i < highlightedCells.length; i++) {
         word.push(highlightedCells[i].querySelector("input").value)
     }
@@ -206,7 +206,7 @@ document.querySelector('table').addEventListener('click', e => {
             continue
         }
         highlightClue(clue)
-        socket.send(JSON.stringify({event: "click", clue: clue}));
+        socket.send(JSON.stringify({event: "click", clues: clue}));
         break
     }
 }, false);

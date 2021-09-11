@@ -31,6 +31,7 @@ type Clue struct {
 	Clue               template.HTML
 	Position           Point
 	SeparatorLocations map[string][]int
+	Group              []string // if the clue spans across mulitple down/accross on the grid
 }
 
 type Crossword struct {
@@ -81,6 +82,14 @@ func separatorPositions(s map[string][]int) []int {
 	return nil
 }
 
+func clueGroups(groups []string) []string {
+	var classes []string
+	for _, g := range groups {
+		classes = append(classes, "clue-"+g)
+	}
+	return classes
+}
+
 var crosswordTypes = []string{"quick", "cryptic", "prize", "weekend", "quiptic", "genius", "speedy", "everyman"}
 
 func generateCrossword(w http.ResponseWriter, r *http.Request, crosswordType string, crosswordNumber int) {
@@ -98,8 +107,9 @@ func generateCrossword(w http.ResponseWriter, r *http.Request, crosswordType str
 		}
 	}
 
-	for _, entry := range crossword.Entries {
+	for j, entry := range crossword.Entries {
 		pos := Point{entry.Position.X, entry.Position.Y}
+		crossword.Entries[j].Group = clueGroups(entry.Group)
 		for i := 0; i < entry.Length; i++ {
 			cell := grid[pos.Y][pos.X]
 			if i == 0 {
@@ -108,7 +118,7 @@ func generateCrossword(w http.ResponseWriter, r *http.Request, crosswordType str
 			if cell.Classes == nil {
 				cell.Classes = append(cell.Classes, "white")
 			}
-			cell.Classes = append(cell.Classes, "clue-"+entry.ID)
+			cell.Classes = append(cell.Classes, clueGroups(entry.Group)...)
 			if entry.Direction == "across" {
 				if len(entry.SeparatorLocations) != 0 {
 					positions := separatorPositions(entry.SeparatorLocations)
@@ -153,7 +163,7 @@ type message struct {
 	Key       string          `json:"key"`
 	Row       string          `json:"row"`
 	Col       string          `json:"col"`
-	Clue      string          `json:"clue"`
+	Clues     string          `json:"clues"`
 	Connected int64           `json:"connected"`
 	Sender    *websocket.Conn `json:"sender"`
 }

@@ -34,7 +34,7 @@
       <ol>
         {{ range .Crossword.Entries }}
           {{ if eq .Direction "across" }}
-            <div class="clue-{{ .ID }}"><li value={{ .Number }}> {{ .Clue }}</li></div>
+            <div class="{{ join .Group }}"><li value={{ .Number }}> {{ .Clue }}</li></div>
           {{ end }}
         {{ end }}
       </ol>
@@ -43,7 +43,7 @@
       <ol>
         {{ range .Crossword.Entries }}
           {{ if eq .Direction "down" }}
-            <div class="clue-{{ .ID }}"><li value={{ .Number }}> {{ .Clue }}</li></div>
+            <div class="{{ join .Group }}"><li value={{ .Number }}> {{ .Clue }}</li></div>
           {{ end }}
         {{ end }}
       </ol>
