@@ -1,1 +1,1 @@
-web: bin/supremo
+web: go run .

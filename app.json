@@ -1,0 +1,6 @@
+{
+  "name": "Grauniad Crossworder",
+  "description": "Allows you to solve Guardian crosswords over the web with your friends",
+  "repository": "https://github.com/weaselsnak/guardian-crossworder",
+  "keywords": ["crosswords", "web sockets", "Grauniad"]
+}
