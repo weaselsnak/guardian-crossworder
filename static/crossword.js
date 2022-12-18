@@ -4,6 +4,21 @@ let FOCUSED_CELL;
 let LAST_CLICKED_CELL;
 const CROSSWORD_ID = document.getElementById("crossword-id").value; // crosswords/quick/1234
 
+
+
+async function send(payload) {
+	const response = await fetch(
+		"/fill",
+		{
+			method: "POST",
+			body: payload
+		}
+	);
+	if (!response.ok) {
+		throw new Error(`HTTP error! status: ${response.status}`);
+	}
+}
+
 // e.g. highlightClue("clue-15-across")
 function highlightClue(clue) {
     if (HIGHLIGHTED_CLUE) {
@@ -30,7 +45,7 @@ document.querySelector('aside').addEventListener('click', e => {
     const div = e.target.parentNode;
     if (e.target.tagName != "LI" || div.classList.contains("highlighted")) return;
     // sending clue for friend's highlight
-    socket.send(JSON.stringify({event: "click", clue: div.className}));
+    send(JSON.stringify({event: "click", clue: div.className}));
     highlightClue(div.className)
     const firstInput = document.querySelector("td.highlighted input")
     firstInput.select()
@@ -60,60 +75,29 @@ function click(cells, cell, offset) {
     }
 }
 
-function newSocket() {
-    if (location.protocol == 'http:') {
-        socket = new WebSocket(`ws://${location.host}/ws`);
-    } else {
-        socket = new WebSocket(`wss://${location.host}/ws`);
-    }
-    socket.onopen = function() {
-        console.log('socket open')
-    };
-}
 
-let socket;
-newSocket();
-socket.onmessage = function (e) {
-    // receiving empty message to keep connection alive
-    if (e.data == '{}') {
-        return;
-    }
-    const msg = JSON.parse(e.data);
-    if (msg.connected != 0) {
-        document.getElementById("connected").innerHTML = msg.connected
-        return
-    }
-    const cell = document.querySelector(`td[data-row='${msg.row}'][data-col='${msg.col}']`);
-    const cells = document.querySelectorAll("td.white")
-    if (msg.event == 'letter') {
-    // this is to highlight clicked on clues sent from the client
-        highlightFriendsClue(msg.clues);
-        cell.querySelector("input").value = msg.key;
-        save(cells)
-        return;
-    }
-    if (msg.event == 'backspace') {
-        save(cells)
-        cell.querySelector("input").value = "";
-        return;
-    }
-    if (msg.event == 'click') {
-        highlightFriendsClue(msg.clues);
-    }
-}
-
-// to stop the server from idling
-setInterval(function(){
-    socket.send(JSON.stringify({}))
-}, 30000);
-
-socket.onclose = function (event) {
-    console.log("socket closed: ", event)
+var es = new EventSource('/stream');
+es.onmessage = function (e) {
+	const msg = JSON.parse(e.data);
+	const cell = document.querySelector(`td[data-row='${msg.row}'][data-col='${msg.col}']`);
+	const cells = document.querySelectorAll("td.white")
+	if (msg.event == 'letter') {
+		// this is to highlight clicked on clues sent from the client
+		highlightFriendsClue(msg.clues);
+		cell.querySelector("input").value = msg.key;
+		save(cells)
+		return;
+	}
+	if (msg.event == 'backspace') {
+		save(cells)
+		cell.querySelector("input").value = "";
+		return;
+	}
+	if (msg.event == 'click') {
+		highlightFriendsClue(msg.clues);
+	}
 };
 
-socket.onerror = function(event) {
-    console.error("socket error: ", event);
-};
 
 document.querySelector('table').addEventListener('keydown', e => {
     const cell = e.target.closest('td.white')
@@ -145,9 +129,6 @@ document.querySelector('table').addEventListener('keydown', e => {
 
 document.querySelector('table').addEventListener('keypress', e => {
     if (e.key < 'a' || e.key > 'z') return e.preventDefault();
-    if (socket.readyState === WebSocket.CLOSED) {
-        newSocket();
-    }
     const cell = e.target.closest('td.white')
     if (!cell) return;
     const highlightedCells = document.querySelectorAll("td.highlighted")
@@ -155,7 +136,7 @@ document.querySelector('table').addEventListener('keypress', e => {
     cell.querySelector("input").value = e.key
     const cells = document.querySelectorAll("td.white")
     save(cells)
-    socket.send(JSON.stringify({event: 'letter', key: e.key, row: cell.getAttribute("data-row"), col: cell.getAttribute("data-col"), clues: HIGHLIGHTED_CLUE}))
+    send(JSON.stringify({event: 'letter', key: e.key, row: cell.getAttribute("data-row"), col: cell.getAttribute("data-col"), clues: HIGHLIGHTED_CLUE}))
     for (let i = 0; i < highlightedCells.length; i++) {
         word.push(highlightedCells[i].querySelector("input").value)
     }
@@ -168,13 +149,10 @@ document.querySelector('table').addEventListener('keyup', e => {
     if (e.keyCode != BACKSPACE_KEY) {
         return
     }
-    if (socket.readyState === WebSocket.CLOSED) {
-        newSocket();
-    }
     const cell = e.target.closest('td.white')
     if (!cell) return;
     const highlightedCells = document.querySelectorAll("td.highlighted")
-    socket.send(JSON.stringify({event: 'backspace', row: cell.getAttribute("data-row"), col: cell.getAttribute("data-col")})) 
+    send(JSON.stringify({event: 'backspace', row: cell.getAttribute("data-row"), col: cell.getAttribute("data-col")})) 
     moveFocus(highlightedCells, cell, -1)
 }, false);
 
@@ -206,7 +184,7 @@ document.querySelector('table').addEventListener('click', e => {
             continue
         }
         highlightClue(clue)
-        socket.send(JSON.stringify({event: "click", clues: clue}));
+        send(JSON.stringify({event: "click", clues: clue}));
         break
     }
 }, false);

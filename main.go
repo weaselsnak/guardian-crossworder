@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -11,11 +12,9 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/gorilla/websocket"
 )
 
 type Point struct {
@@ -161,104 +160,6 @@ func generateCrossword(w http.ResponseWriter, r *http.Request, crosswordType str
 	}
 }
 
-type message struct {
-	Event     string          `json:"event"`
-	Key       string          `json:"key"`
-	Row       string          `json:"row"`
-	Col       string          `json:"col"`
-	Clues     string          `json:"clues"`
-	Connected int64           `json:"connected"`
-	Sender    *websocket.Conn `json:"sender"`
-}
-
-var broadcast = make(chan message)
-var mu = sync.Mutex{}
-var clients = make(map[*websocket.Conn]bool)
-
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-}
-
-func deleteConnection(conn *websocket.Conn) {
-	mu.Lock()
-	delete(clients, conn)
-	mu.Unlock()
-
-}
-func addConnection(conn *websocket.Conn) {
-	mu.Lock()
-	clients[conn] = true
-	mu.Unlock()
-}
-
-func closeGracefully(conn *websocket.Conn, err error) {
-	log.Println(err)
-	atomic.AddInt64(&usersConnected, -1)
-	conn.Close()
-	deleteConnection(conn)
-	broadcast <- message{Connected: atomic.LoadInt64(&usersConnected)}
-}
-
-var usersConnected int64
-
-func getConnections() (conns []*websocket.Conn) {
-	mu.Lock()
-	for conn := range clients {
-		conns = append(conns, conn)
-	}
-	mu.Unlock()
-	return conns
-}
-
-func wsHandler(w http.ResponseWriter, r *http.Request) {
-	conn, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		http.Error(w, "Could not open websocket connection", http.StatusBadRequest)
-	}
-	defer conn.Close()
-	addConnection(conn)
-	atomic.AddInt64(&usersConnected, 1)
-	broadcast <- message{Connected: atomic.LoadInt64(&usersConnected)}
-	for {
-		var msg message
-		if err := conn.ReadJSON(&msg); err != nil {
-			closeGracefully(conn, err)
-			break
-		}
-		if msg == (message{}) {
-			continue
-		}
-		msg.Sender = conn
-		broadcast <- msg
-	}
-}
-
-func handleMessages() {
-	for {
-		select {
-		case msg := <-broadcast:
-			conns := getConnections()
-			for _, conn := range conns {
-				// we want to skip writing messages to the sender
-				if msg.Sender == conn {
-					continue
-				}
-				if err := conn.WriteJSON(msg); err != nil {
-					closeGracefully(conn, err)
-				}
-			}
-		case <-time.After(30 * time.Second):
-			conns := getConnections()
-			for _, conn := range conns {
-				if err := conn.WriteJSON(message{}); err != nil {
-					closeGracefully(conn, err)
-				}
-			}
-		}
-	}
-}
-
 func isValid(crosswordType string) bool {
 	for _, c := range crosswordTypes {
 		if strings.EqualFold(c, crosswordType) {
@@ -266,6 +167,12 @@ func isValid(crosswordType string) bool {
 		}
 	}
 	return false
+}
+
+var versionNo = time.Now().Unix()
+
+type sseHandler struct {
+	clients *sync.Map
 }
 
 func router(w http.ResponseWriter, r *http.Request) {
@@ -282,17 +189,71 @@ func router(w http.ResponseWriter, r *http.Request) {
 	generateCrossword(w, r, crosswordType, crosswordNumber)
 }
 
-var versionNo = time.Now().Unix()
+type message struct {
+	Event     string `json:"event"`
+	Key       string `json:"key"`
+	Row       string `json:"row"`
+	Col       string `json:"col"`
+	Clues     string `json:"clues"`
+	Connected int64  `json:"connected"`
+}
 
 func main() {
-	http.HandleFunc("/ws", wsHandler)
+	h := sseHandler{new(sync.Map)}
 	prefix := fmt.Sprintf("/static/%d/", versionNo)
 	http.Handle(prefix, http.StripPrefix(prefix, http.FileServer(http.Dir("static"))))
+	http.HandleFunc("/fill", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			body, err := io.ReadAll(r.Body)
+			if err != nil {
+				log.Printf("unable to read body %s", err)
+				return
+			}
+			h.Broadcast(string(body))
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
 	http.HandleFunc("/", router)
-	go handleMessages()
+	http.Handle("/stream", h)
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "5000"
 	}
+	log.Printf("starting server on :%s", port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
+
+}
+
+func (s sseHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	f, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "Streaming unsupported!", http.StatusBadRequest)
+		return
+	}
+	msgs := make(chan string)
+	s.clients.Store(msgs, true)
+	go func() {
+		<-r.Context().Done()
+		close(msgs)
+		s.clients.Delete(msgs)
+	}()
+
+	// Set the headers related to event streaming.
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("Transfer-Encoding", "chunked")
+
+	for msg := range msgs {
+		fmt.Fprintf(w, "data: %s\n\n", msg)
+		f.Flush()
+	}
+}
+
+func (s sseHandler) Broadcast(event string) {
+	s.clients.Range(func(client, _ any) bool {
+		client.(chan string) <- event
+		return true
+	})
 }
