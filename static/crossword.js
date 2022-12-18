@@ -1,9 +1,7 @@
 let HIGHLIGHTED_CLUE;
-let FRIENDS_HIGHLIGHTED_CLUE;
 let FOCUSED_CELL;
 let LAST_CLICKED_CELL;
 const CROSSWORD_ID = document.getElementById("crossword-id").value; // crosswords/quick/1234
-
 
 
 async function send(payload) {
@@ -30,22 +28,9 @@ function highlightClue(clue) {
     HIGHLIGHTED_CLUE = clue;
 }
 
-// This is the Francesca feature
-function highlightFriendsClue(clue) {
-    if (FRIENDS_HIGHLIGHTED_CLUE) {
-        const cells = document.querySelectorAll("." + FRIENDS_HIGHLIGHTED_CLUE)
-        cells.forEach(c => c.classList.remove("friends-highlighted"))
-    }
-    const cells = document.querySelectorAll("." + clue)
-    cells.forEach(c => c.classList.add("friends-highlighted"))
-    FRIENDS_HIGHLIGHTED_CLUE = clue;
-}
-
 document.querySelector('aside').addEventListener('click', e => {
     const div = e.target.parentNode;
     if (e.target.tagName != "LI" || div.classList.contains("highlighted")) return;
-    // sending clue for friend's highlight
-    send(JSON.stringify({event: "click", clue: div.className}));
     highlightClue(div.className)
     const firstInput = document.querySelector("td.highlighted input")
     firstInput.select()
@@ -82,8 +67,6 @@ es.onmessage = function (e) {
 	const cell = document.querySelector(`td[data-row='${msg.row}'][data-col='${msg.col}']`);
 	const cells = document.querySelectorAll("td.white")
 	if (msg.event == 'letter') {
-		// this is to highlight clicked on clues sent from the client
-		highlightFriendsClue(msg.clues);
 		cell.querySelector("input").value = msg.key;
 		save(cells)
 		return;
@@ -92,9 +75,6 @@ es.onmessage = function (e) {
 		save(cells)
 		cell.querySelector("input").value = "";
 		return;
-	}
-	if (msg.event == 'click') {
-		highlightFriendsClue(msg.clues);
 	}
 };
 
