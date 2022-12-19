@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
@@ -190,12 +191,11 @@ func router(w http.ResponseWriter, r *http.Request) {
 }
 
 type message struct {
-	Event     string `json:"event"`
-	Key       string `json:"key"`
-	Row       string `json:"row"`
-	Col       string `json:"col"`
-	Clues     string `json:"clues"`
-	Connected int64  `json:"connected"`
+	Event string `json:"event,omitempty"`
+	Key   string `json:"key,omitempty"`
+	Row   string `json:"row,omitempty"`
+	Col   string `json:"col,omitempty"`
+	Clues string `json:"clues,omitempty"`
 }
 
 func main() {
@@ -225,6 +225,8 @@ func main() {
 
 }
 
+var usersConnected int64
+
 func (s sseHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	f, ok := w.(http.Flusher)
 	if !ok {
@@ -233,10 +235,13 @@ func (s sseHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	msgs := make(chan string)
 	s.clients.Store(msgs, true)
+	atomic.AddInt64(&usersConnected, 1)
 	go func() {
+		s.Broadcast(fmt.Sprintf(`{"connected": %d}`, atomic.LoadInt64(&usersConnected)))
 		<-r.Context().Done()
 		close(msgs)
 		s.clients.Delete(msgs)
+		atomic.AddInt64(&usersConnected, -1)
 	}()
 
 	// Set the headers related to event streaming.

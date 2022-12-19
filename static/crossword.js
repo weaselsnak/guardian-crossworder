@@ -64,6 +64,10 @@ function click(cells, cell, offset) {
 var es = new EventSource('/stream');
 es.onmessage = function (e) {
 	const msg = JSON.parse(e.data);
+	if (msg.connected != 0) {
+		document.getElementById("connected").innerHTML = msg.connected;
+		return
+	}
 	const cell = document.querySelector(`td[data-row='${msg.row}'][data-col='${msg.col}']`);
 	const cells = document.querySelectorAll("td.white")
 	if (msg.event == 'letter') {
