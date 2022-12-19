@@ -209,7 +209,12 @@ func main() {
 				log.Printf("unable to read body %s", err)
 				return
 			}
-			h.Broadcast(string(body))
+			id, err := strconv.ParseInt(r.FormValue("id"), 10, 64)
+			if err != nil {
+				log.Printf("unable to parse id %s", err)
+				return
+			}
+			h.Broadcast(string(body), id)
 		}
 		w.WriteHeader(http.StatusNoContent)
 	})
@@ -226,6 +231,7 @@ func main() {
 }
 
 var usersConnected int64
+var idCounter int64
 
 func (s sseHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	f, ok := w.(http.Flusher)
@@ -234,10 +240,12 @@ func (s sseHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	msgs := make(chan string)
-	s.clients.Store(msgs, true)
 	atomic.AddInt64(&usersConnected, 1)
+	atomic.AddInt64(&idCounter, 1)
+	s.clients.Store(msgs, atomic.LoadInt64(&idCounter))
 	go func() {
-		s.Broadcast(fmt.Sprintf(`{"connected": %d}`, atomic.LoadInt64(&usersConnected)))
+		s.Broadcast(fmt.Sprintf(`{"connected": %d}`, atomic.LoadInt64(&usersConnected)), 0)
+		msgs <- fmt.Sprintf(`{"id": %d}`, atomic.LoadInt64(&idCounter))
 		<-r.Context().Done()
 		close(msgs)
 		s.clients.Delete(msgs)
@@ -256,9 +264,11 @@ func (s sseHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s sseHandler) Broadcast(event string) {
-	s.clients.Range(func(client, _ any) bool {
-		client.(chan string) <- event
+func (s sseHandler) Broadcast(event string, sender int64) {
+	s.clients.Range(func(client, id any) bool {
+		if sender != id {
+			client.(chan string) <- event
+		}
 		return true
 	})
 }

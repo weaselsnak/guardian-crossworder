@@ -1,12 +1,13 @@
 let HIGHLIGHTED_CLUE;
 let FOCUSED_CELL;
 let LAST_CLICKED_CELL;
+let ID;
 const CROSSWORD_ID = document.getElementById("crossword-id").value; // crosswords/quick/1234
 
 
 async function send(payload) {
 	const response = await fetch(
-		"/fill",
+		`/fill?id=${ID}`,
 		{
 			method: "POST",
 			body: payload
@@ -64,8 +65,12 @@ function click(cells, cell, offset) {
 var es = new EventSource('/stream');
 es.onmessage = function (e) {
 	const msg = JSON.parse(e.data);
-	if (msg.connected != 0) {
+	if (msg.connected) {
 		document.getElementById("connected").innerHTML = msg.connected;
+		return
+	}
+	if (msg.id) {
+		ID = msg.id;
 		return
 	}
 	const cell = document.querySelector(`td[data-row='${msg.row}'][data-col='${msg.col}']`);
