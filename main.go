@@ -250,6 +250,7 @@ func (s sseHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		close(msgs)
 		s.clients.Delete(msgs)
 		atomic.AddInt64(&usersConnected, -1)
+		s.Broadcast(fmt.Sprintf(`{"connected": %d}`, atomic.LoadInt64(&usersConnected)), 0)
 	}()
 
 	// Set the headers related to event streaming.
