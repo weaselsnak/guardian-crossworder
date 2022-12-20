@@ -249,6 +249,7 @@ func (s sseHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		<-r.Context().Done()
 		close(msgs)
 		s.clients.Delete(msgs)
+		f.Flush()
 		atomic.AddInt64(&usersConnected, -1)
 		s.Broadcast(fmt.Sprintf(`{"connected": %d}`, atomic.LoadInt64(&usersConnected)), 0)
 	}()
