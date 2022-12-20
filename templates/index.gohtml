@@ -1,7 +1,9 @@
 <!DOCTYPE html>
 <head>
-<link rel="stylesheet" href="{{ staticpath "style.css" }}">
-<link rel="icon" type="image/x-icon" href="{{ staticpath "favicon.png" }}">
+    <link rel="stylesheet" href="{{ staticpath "style.css" }}">
+    <link rel="icon" type="image/x-icon" href="{{ staticpath "favicon.png" }}">
+    <title>Grauniad Boyles</title>
+</head>
 <header>
     <h2>{{ .Crossword.Name }}</h2>
     <div class="info">
@@ -10,7 +12,6 @@
     <div>
   <input type="hidden" id="crossword-id" value="{{ .Crossword.Id }}">
 </header>
-</head>
 <main>
   <article>
     <table cellspacing="0">
