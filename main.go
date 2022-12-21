@@ -242,16 +242,17 @@ func (s sseHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	msgs := make(chan string)
 	atomic.AddInt64(&usersConnected, 1)
 	atomic.AddInt64(&idCounter, 1)
+	id := atomic.AddInt64(&idCounter, 1)
 	s.clients.Store(msgs, atomic.LoadInt64(&idCounter))
 	go func() {
+		msgs <- fmt.Sprintf(`{"id": %d}`, id)
 		s.Broadcast(fmt.Sprintf(`{"connected": %d}`, atomic.LoadInt64(&usersConnected)), 0)
-		msgs <- fmt.Sprintf(`{"id": %d}`, atomic.LoadInt64(&idCounter))
 		<-r.Context().Done()
 		close(msgs)
 		s.clients.Delete(msgs)
-		f.Flush()
-		atomic.AddInt64(&usersConnected, -1)
-		s.Broadcast(fmt.Sprintf(`{"connected": %d}`, atomic.LoadInt64(&usersConnected)), 0)
+		oneLess := atomic.AddInt64(&usersConnected, -1)
+		s.Broadcast(fmt.Sprintf(`{"connected": %d}`, oneLess), 0)
+
 	}()
 
 	// Set the headers related to event streaming.
